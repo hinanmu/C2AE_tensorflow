@@ -30,5 +30,10 @@
 # Requrements
 - tensorflow 1.12.0
 - numpy 1.16.2
+
+# Thanks
+the paper's author code matlab [https://github.com/chihkuanyeh/C2AE](https://github.com/chihkuanyeh/C2AE)
+other implement(I think there some mistakes in this code) [https://github.com/dhruvramani/C2AE-Multilabel-Classification](https://github.com/dhruvramani/C2AE-Multilabel-Classification)
+
 # Reference
 Yeh, C. K., Wu, W. C., Ko, W. J., & Wang, Y. C. F. (2017). Learning deep latent space for multi-label classification. In AAAI (pp. 2838–2844).
