@@ -15,15 +15,16 @@ class DataSet(object):
 
     def get_train(self):
         if self.train == None:
-            X = self.get_data(self.config.train_path + "-features.pkl", True)
+            X = self.get_data(self.config.train_path + "-features.pkl")
             Y = self.get_data(self.config.train_path + "-labels.pkl")
             length = X.shape[0]
-            X, Y = X[0 : int(0.833 * length) , :], Y[0 : int(0.833 * length), :]
+            X, Y = X[0 : 10417 , :], Y[0 : 10417, :]
+
+            X, Y = self.eliminate_data(X, Y)
             self.train = X, Y
         else :
             X, Y = self.train
 
-        X, Y = self.eliminate_data(X, Y)
         return X, Y
 
     def get_validation(self):
@@ -31,7 +32,7 @@ class DataSet(object):
             X = self.get_data(self.config.train_path + "-features.pkl")
             Y = self.get_data(self.config.train_path + "-labels.pkl")
             length = X.shape[0]
-            X, Y = X[0 : int(0.167 * length) , :], Y[0 : int(0.167 * length), :]
+            X, Y = X[10417:12501 , :], Y[10417:12501, :]
             self.validation = X, Y
         else :
             X, Y = self.validation
@@ -54,14 +55,18 @@ class DataSet(object):
         X, Y = func()
         start = 0
         batch_size = self.config.batch_size
-        tot = len(X)
-        total = int(tot/ batch_size) # fix the last batch
+        total = len(X)
+        batch_num = int(total/ batch_size) # fix the last batch
         while start < total:
-            end = start + batch_size
+            end = min(start + batch_size, total)
             x = X[start : end, :]
             y = Y[start : end, :]
-            start += 1
-            yield (x, y, int(total))
+
+            if end == total:
+                x = np.r_[x, X[0 : start + batch_size - total, :]]
+                y = np.r_[y, Y[0 : start + batch_size - total, :]]
+            start += batch_size
+            yield (x, y, int(batch_num))
 
     def eliminate_data(self, X, Y):
         """Eliminate data with one instaces in y is full 1 or full 0

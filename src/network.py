@@ -3,18 +3,12 @@ import utils
 import numpy as np
 import tensorflow as tf
 from config import Config
-
-# Source : https://gist.github.com/harpone/3453185b41d8d985356cbe5e57d67342
-def py_func(func, inp, Tout, stateful=True, name=None, grad=None):
-    rnd_name = 'PyFuncGrad' + str(np.random.randint(0, 1E+8))
-    tf.RegisterGradient(rnd_name)(grad)  
-    g = tf.get_default_graph()
-    with g.gradient_override_map({"PyFunc": rnd_name}):
-        return tf.py_func(func, inp, Tout, stateful=stateful, name=name)
+from custom_optimizer import CustomOptimizer
 
 class Network(object):
     def __init__(self, config, summarizer):
         tf.set_random_seed(0)
+        np.random.seed(1)
         self.summarizer = summarizer
         self.config = config
         self.Wx1, self.Wx2, self.Wx3, self.bx1, self.bx2, self.bx3 = self.init_Fx_variables()
@@ -28,8 +22,10 @@ class Network(object):
         :param name:
         :return:
         """
-        w = tf.get_variable(name=name, shape=shape, initializer=tf.random_uniform_initializer)
-        w = 2 * (w - 0.5) * 0.01
+        rand_w = np.random.rand(shape[0], shape[1]).flatten(order='C').reshape((shape[0], shape[1]), order='F')
+        rand_w = rand_w.astype(np.float32)
+        rand_w = 2 * (rand_w - 0.5) * 0.01
+        w = tf.get_variable(name=name, initializer=rand_w)
         return w
 
     def bias_variable_leaky_relu(self, shape, name):
@@ -39,8 +35,10 @@ class Network(object):
         :param name:
         :return:
         """
-        b = tf.get_variable(name=name, shape=shape, initializer=tf.random_uniform_initializer)
-        b = b * 0.1
+        rand_b = np.random.rand(shape[0])
+        rand_b = rand_b.astype(np.float32)
+        rand_b = rand_b * 0.1
+        b = tf.get_variable(name=name, initializer=rand_b)
         return b
 
     def weight_variable_sigmoid(self, shape, name):
@@ -50,8 +48,10 @@ class Network(object):
         :param name:
         :return:
         """
-        w = tf.get_variable(name=name, shape=shape, initializer=tf.random_uniform_initializer)
-        w = 8 * (w - 0.5) * np.sqrt(6) / np.sqrt(shape[0]+shape[1])
+        rand_w = np.random.rand(shape[0], shape[1]).flatten(order='C').reshape((shape[0], shape[1]), order='F')
+        rand_w = rand_w.astype(np.float32)
+        rand_w = 8 * (rand_w - 0.5) * np.sqrt(6) / np.sqrt(shape[0] + shape[1])
+        w = tf.get_variable(name=name, initializer=rand_w)
         return w
 
     def bias_variable_sigmoid(self, shape, name):
@@ -61,8 +61,7 @@ class Network(object):
         :param name:
         :return:
         """
-        b = tf.get_variable(name=name, shape=shape, initializer=tf.random_uniform_initializer)
-        b = b * 0
+        b = tf.get_variable(name=name, shape=shape, initializer=tf.zeros_initializer)
         return b
 
     def init_Fx_variables(self):
@@ -70,12 +69,13 @@ class Network(object):
         init Fx weight and bias
         :return:
         """
-        W1 = self.weight_variable_leaky_relu([self.config.features_dim, self.config.solver.hidden_dim], "weight_x1")
-        W2 = self.weight_variable_leaky_relu([self.config.solver.hidden_dim, self.config.solver.hidden_dim], "weight_x2")
-        W3 = self.weight_variable_sigmoid([self.config.solver.hidden_dim, self.config.solver.latent_embedding_dim], "weight_x3")
-        b1 = self.bias_variable_leaky_relu([self.config.solver.hidden_dim], "bias_x1")
-        b2 = self.bias_variable_leaky_relu([self.config.solver.hidden_dim], "bias_x2")
-        b3 = self.bias_variable_sigmoid([self.config.solver.latent_embedding_dim], "bias_x3")
+        with tf.variable_scope('Fx'):
+            W1 = self.weight_variable_leaky_relu([self.config.features_dim, self.config.solver.hidden_dim], "weight_x1")
+            b1 = self.bias_variable_leaky_relu([self.config.solver.hidden_dim], "bias_x1")
+            W2 = self.weight_variable_leaky_relu([self.config.solver.hidden_dim, self.config.solver.hidden_dim], "weight_x2")
+            b2 = self.bias_variable_leaky_relu([self.config.solver.hidden_dim], "bias_x2")
+            W3 = self.weight_variable_sigmoid([self.config.solver.hidden_dim, self.config.solver.latent_embedding_dim], "weight_x3")
+            b3 = self.bias_variable_sigmoid([self.config.solver.latent_embedding_dim], "bias_x3")
         return W1, W2, W3, b1, b2, b3
 
     def init_Fe_variables(self):
@@ -83,10 +83,11 @@ class Network(object):
         init Fe weight and bias
         :return:
         """
-        W1 = self.weight_variable_leaky_relu([self.config.labels_dim, self.config.solver.hidden_dim], "weight_e1")
-        W2 = self.weight_variable_sigmoid([self.config.solver.hidden_dim, self.config.solver.latent_embedding_dim], "weight_e2")
-        b1 = self.bias_variable_leaky_relu([self.config.solver.hidden_dim], "bias_e1")
-        b2 = self.bias_variable_sigmoid([self.config.solver.latent_embedding_dim], "bias_e2")
+        with tf.variable_scope('Fe'):
+            W1 = self.weight_variable_leaky_relu([self.config.labels_dim, self.config.solver.hidden_dim], "weight_e1")
+            b1 = self.bias_variable_leaky_relu([self.config.solver.hidden_dim], "bias_e1")
+            W2 = self.weight_variable_sigmoid([self.config.solver.hidden_dim, self.config.solver.latent_embedding_dim], "weight_e2")
+            b2 = self.bias_variable_sigmoid([self.config.solver.latent_embedding_dim], "bias_e2")
         return W1, W2, b1, b2
 
     def init_Fd_variables(self):
@@ -94,10 +95,11 @@ class Network(object):
         init Fd weight and bias
         :return:
         """
-        W1 = self.weight_variable_leaky_relu([self.config.solver.latent_embedding_dim, self.config.solver.hidden_dim], "weight_d1")
-        W2 = self.weight_variable_sigmoid([self.config.solver.hidden_dim, self.config.labels_dim], "weight_d2")
-        b1 = self.bias_variable_leaky_relu([self.config.solver.hidden_dim], "bias_d1")
-        b2 = self.bias_variable_sigmoid([self.config.labels_dim], "bias_d2")
+        with tf.variable_scope('Fd'):
+            W1 = self.weight_variable_leaky_relu([self.config.solver.latent_embedding_dim, self.config.solver.hidden_dim], "weight_d1")
+            b1 = self.bias_variable_leaky_relu([self.config.solver.hidden_dim], "bias_d1")
+            W2 = self.weight_variable_sigmoid([self.config.solver.hidden_dim, self.config.labels_dim], "weight_d2")
+            b2 = self.bias_variable_sigmoid([self.config.labels_dim], "bias_d2")
         return W1, W2, b1, b2
 
     def accuracy(self, y_pred, y):
@@ -113,9 +115,9 @@ class Network(object):
         :return: tensor {n_intances, n_latent_embedding_dim}
             Fx latent data
         """
-        hidden1 = tf.nn.dropout(tf.nn.leaky_relu(tf.matmul(X, self.Wx1) + self.bx1), keep_prob)
-        hidden2 = tf.nn.dropout(tf.nn.leaky_relu(tf.matmul(hidden1, self.Wx2) + self.bx2), keep_prob)
-        hidden3 = tf.nn.dropout(tf.nn.sigmoid(tf.matmul(hidden2, self.Wx3) + self.bx3), keep_prob)
+        hidden1 = tf.nn.leaky_relu(tf.matmul(X, self.Wx1) + self.bx1, alpha=0.1)
+        hidden2 = tf.nn.leaky_relu(tf.matmul(hidden1, self.Wx2) + self.bx2, alpha=0.1)
+        hidden3 = tf.nn.sigmoid(tf.matmul(hidden2, self.Wx3) + self.bx3)
         hidden3 = tf.subtract(hidden3, 0.5)
         return hidden3
 
@@ -129,10 +131,10 @@ class Network(object):
         :return: tensor {n_intances, n_latent_embedding_dim}
             Fe latent data
         """
-        hidden1 = tf.nn.dropout(tf.nn.leaky_relu(tf.matmul(Y, self.We1)) + self.be1, keep_prob)
-        pred = tf.nn.dropout(tf.nn.sigmoid(tf.matmul(hidden1, self.We2) + self.be2), keep_prob)
-        pred = tf.subtract(pred, 0.5)
-        return pred
+        hidden1 = tf.nn.leaky_relu(tf.matmul(Y, self.We1) + self.be1, alpha=0.1)
+        hidden2 = tf.nn.sigmoid(tf.matmul(hidden1, self.We2) + self.be2)
+        hidden2 = tf.subtract(hidden2, 0.5)
+        return hidden2
 
     def Fd(self, input, keep_prob):
         """
@@ -144,7 +146,7 @@ class Network(object):
         :return: tensor {n_intances, n_labels}
             Fd predict logits
         """
-        hidden1 = tf.nn.dropout(tf.nn.leaky_relu(tf.matmul(input, self.Wd1) + self.bd1), keep_prob)
+        hidden1 = tf.nn.leaky_relu(tf.matmul(input, self.Wd1) + self.bd1, alpha=0.1)
         logits = tf.matmul(hidden1, self.Wd2) + self.bd2
         pred = tf.nn.sigmoid(logits)
         return pred
@@ -204,6 +206,7 @@ class Network(object):
         tensorflow tensor
         """
         shape = tf.shape(labels)
+
         y_i = tf.equal(labels, tf.ones(shape))
         y_not_i = tf.equal(labels, tf.zeros(shape))
 
@@ -224,7 +227,7 @@ class Network(object):
         y_i_bar_sizes = tf.reduce_sum(tf.to_float(y_not_i), axis=1)
         normalizers = tf.multiply(y_i_sizes, y_i_bar_sizes)
 
-        loss = tf.divide(sums, normalizers)
+        loss = tf.divide(sums, 5*normalizers)
         zero = tf.zeros_like(loss)
         loss = tf.where(tf.logical_or(tf.is_inf(loss), tf.is_nan(loss)), x=zero, y=loss)
         loss = tf.reduce_sum(loss)
@@ -271,16 +274,15 @@ class Network(object):
         Fx = self.Fx(features, keep_prob)
         Fe = self.Fe(labels, keep_prob)
         l2_norm = tf.reduce_sum(tf.square(self.Wx1)) + tf.reduce_sum(tf.square(self.Wx2)) + tf.reduce_sum(tf.square(self.Wx3)) + tf.reduce_sum(tf.square(self.We1)) + tf.reduce_sum(tf.square(self.We2)) + tf.reduce_sum(tf.square(self.Wd1)) + tf.reduce_sum(tf.square(self.Wd2))
-        l2_norm = 1e-3 * l2_norm
+        l2_norm = 0.001 * l2_norm
 
         return self.embedding_loss(Fx, Fe) + self.config.solver.alpha * self.output_loss(loss_prediction, labels) + l2_norm
 
-    def train_step(self, loss, lr):
+    def train_step(self, loss, optimizer, lr):
         """
-        choose optimizer for minimize loss, this use RMSProp
+        choose optimizer for minimize loss
         :param loss: tensor
         :return: tensor
             optimizer
         """
-        optimizer = self.config.solver.optimizer
         return optimizer(learning_rate=lr, decay=0.9, momentum=0.99).minimize(loss)

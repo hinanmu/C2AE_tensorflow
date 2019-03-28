@@ -1,6 +1,7 @@
 import os
-import utils
+from utils import util
 import tensorflow as tf
+from custom_optimizer import CustomOptimizer
 
 class Config(object):
     def __init__(self, args):
@@ -15,8 +16,7 @@ class Config(object):
         self.patience_increase = args.patience_increase
         self.improvement_threshold = args.improvement_threshold
         self.save_after = args.save_after
-        self.epoch_freq = args.epoch_freq
-        self.debug = args.debug
+        self.epoch_test_freq = args.epoch_test_freq
         self.load = args.load
         self.have_patience = args.have_patience
         class Solver(object):
@@ -27,10 +27,11 @@ class Config(object):
                 self.dropout = t_args.dropout 
                 self.lagrange_const = t_args.lagrange
                 self.alpha = t_args.alpha
-                if t_args.opt.lower() not in ["adam", "rmsprop", "sgd", "momentum"]:
+                if t_args.opt.lower() not in ["custom", "adam", "rmsprop", "sgd", "momentum"]:
                     raise ValueError('Undefined type of optmizer')
                 else:  
-                    self.optimizer = {"adam": tf.train.AdamOptimizer,
+                    self.optimizer = {"custom": CustomOptimizer,
+                                      "adam": tf.train.AdamOptimizer,
                                       "rmsprop": tf.train.RMSPropOptimizer,
                                       "sgd": tf.train.GradientDescentOptimizer,
                                       "momentum": tf.train.MomentumOptimizer}[t_args.opt.lower()]
@@ -40,10 +41,10 @@ class Config(object):
         self.features_dim, self.labels_dim = self.set_dims()
 
     def set_paths(self):
-        project_path = utils.path_exists(self.codebase_root_path)
-        project_prefix_path = utils.path_exists(os.path.join(self.codebase_root_path, 'stdout/', self.project_name, self.folder_suffix))
-        dataset_path = utils.path_exists(os.path.join(self.codebase_root_path, "../data", self.dataset_name))
-        ckptdir_path = utils.path_exists(os.path.join(self.codebase_root_path, "bin/result/"))
+        project_path = util.path_exists(self.codebase_root_path)
+        project_prefix_path = util.path_exists(os.path.join(self.codebase_root_path, '', self.project_name, self.folder_suffix))
+        dataset_path = util.path_exists(os.path.join(self.codebase_root_path, "data/", self.dataset_name))
+        ckptdir_path = util.path_exists(os.path.join(self.codebase_root_path, "model/"))
         train_path = os.path.join(dataset_path, self.dataset_name + "-train")
         test_path = os.path.join(dataset_path, self.dataset_name + "-test")
 

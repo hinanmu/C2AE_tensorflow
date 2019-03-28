@@ -6,7 +6,7 @@
 # Performance
 |type|dataset |Micro F1 |Macro F1 |
 | ------| ------ | ------ | ------ |
-|this code| mirflickr | 0.46| 0.23 |
+|this code| mirflickr | 0.540699| 0.39643 |
 |paper| mirflickr | 0.54| 0.39 |
 
 # Parameter
@@ -14,7 +14,7 @@
 - learning rate: 0.0001
 - learning rate decay: 0.98
 - momentum: 0.99
-- RMSProp decay: 0.9
+- optimizer decay: 0.9
 - l2penalty：0.001
 - maxepoch: 50
 - lagrange para:0.5
@@ -24,7 +24,14 @@
 
 # Description
 - learning rate: decay by new_lr = lr_init * decay^epoch
-- optimizer: RMSProp, decay 0.9, momentum 0.99
+- custom optimizer: similar to RMSProp, decay 0.9, momentum 0.99
+
+    init rrr = 0, delta = 0
+    rrr=sqrt((rrr.^2)*0.9+(grad.^2)*0.1)
+    grad=grad/rrr
+    delta=momentum*delta-eta*grad
+    new_weight=old_weight + delta
+
 - lagrange para: for caculate embedding loss
 
 # Requrements

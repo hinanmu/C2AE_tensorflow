@@ -43,14 +43,15 @@ if __name__ == '__main__':
 
         print(train_features.shape, train_labels.shape)
     else:
-        train_features, train_labels = get_features("./{}/{}-train.arff".format(dataset, dataset), features_dim), get_labels("./{}/{}-train.arff".format(dataset, dataset), features_dim, labels_dim)
-        # train_features = np.loadtxt('./mirflickr/x_train.txt', delimiter=',', dtype="float32")
-        # train_labels = np.loadtxt('./mirflickr/y_train.txt', delimiter=',', dtype="float32")
-        # test_features = np.loadtxt('./mirflickr/x_test.txt', delimiter=',', dtype="float32")
-        # test_labels = np.loadtxt('./mirflickr/y_test.txt', delimiter=',', dtype="float32")
+        #train_features, train_labels = get_features("./{}/{}-train.arff".format(dataset, dataset), features_dim), get_labels("./{}/{}-train.arff".format(dataset, dataset), features_dim, labels_dim)
+        train_features = np.loadtxt('./mirflickr/x_train.txt', delimiter=',', dtype="float32")
+        train_labels = np.loadtxt('./mirflickr/y_train.txt', delimiter=',', dtype="float32")
+        test_features = np.loadtxt('./mirflickr/x_test.txt', delimiter=',', dtype="float32")
+        test_labels = np.loadtxt('./mirflickr/y_test.txt', delimiter=',', dtype="float32")
+
 
         train_features.dump("./{}/{}-train-features.pkl".format(dataset, dataset))
         train_labels.dump("./{}/{}-train-labels.pkl".format(dataset, dataset))
-        test_features, test_labels = get_features("./{}/{}-test.arff".format(dataset, dataset), features_dim), get_labels("./{}/{}-test.arff".format(dataset, dataset), features_dim, labels_dim)
+        #test_features, test_labels = get_features("./{}/{}-test.arff".format(dataset, dataset), features_dim), get_labels("./{}/{}-test.arff".format(dataset, dataset), features_dim, labels_dim)
         test_features.dump("./{}/{}-test-features.pkl".format(dataset, dataset))
         test_labels.dump("./{}/{}-test-labels.pkl".format(dataset, dataset))
